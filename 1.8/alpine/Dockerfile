@@ -4,6 +4,8 @@ FROM alpine:3.12
 ENV HAPROXY_VERSION 1.8.25
 ENV HAPROXY_URL https://www.haproxy.org/download/1.8/src/haproxy-1.8.25.tar.gz
 ENV HAPROXY_SHA256 62c0b77de2275a54a443a869947ddcca2bad7bdc1cafd804732a0e0d59b1708b
+ENV HAPROXY_PATCH https://git.haproxy.org/?p=haproxy-2.2.git;a=patch;h=f31af9367ed7e381e34716c0df53b6a1c0a0c405
+ENV HAPROXY_PATCH_SHA256 8eef880a651bce0f31fcd000adf709fb20bdddda04dfc4df5c38840896a536da
 
 # see https://sources.debian.net/src/haproxy/jessie/debian/rules/ for some helpful navigation of the possible "make" arguments
 RUN set -x \
@@ -16,6 +18,7 @@ RUN set -x \
 		make \
 		openssl \
 		openssl-dev \
+		patch \
 		pcre2-dev \
 		readline-dev \
 		tar \
@@ -25,9 +28,14 @@ RUN set -x \
 	&& echo "$HAPROXY_SHA256 *haproxy.tar.gz" | sha256sum -c \
 	&& mkdir -p /usr/src/haproxy \
 	&& tar -xzf haproxy.tar.gz -C /usr/src/haproxy --strip-components=1 \
+	&& wget -O haproxy.patch "$HAPROXY_PATCH" \
+	&& echo "$HAPROXY_PATCH_SHA256 *haproxy.patch" | sha256sum -c \
+	&& patch -d /usr/src/haproxy -p1 -i /haproxy.patch \
+	&& rm haproxy.patch \
 	&& rm haproxy.tar.gz \
 	\
 	&& makeOpts=' \
+		SUBVERS=-sigsci-1 \
 		TARGET=linux2628 \
 		USE_GETADDRINFO=1 \
 		USE_LUA=1 LUA_INC=/usr/include/lua5.3 LUA_LIB=/usr/lib/lua5.3 \
